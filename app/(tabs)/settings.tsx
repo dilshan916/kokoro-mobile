@@ -280,7 +280,7 @@ export default function SettingsScreen() {
               <View style={styles.quotaRow}>
                 <Text style={styles.quotaLabel}>Monthly Cloud GPU Usage</Text>
                 <Text style={styles.quotaValue}>
-                  {(quotaInfo?.monthly_usage || 0).toLocaleString()} / {(quotaInfo?.monthly_limit || 20000).toLocaleString()} chars
+                  {(quotaInfo?.monthly_usage || 0).toLocaleString()} / {(quotaInfo?.monthly_limit || 30000).toLocaleString()} chars
                 </Text>
               </View>
 
@@ -299,7 +299,7 @@ export default function SettingsScreen() {
 
               <Text style={styles.quotaSubText}>
                 {quotaInfo?.remaining_chars !== 'unlimited'
-                  ? `${(quotaInfo?.remaining_chars || 20000).toLocaleString()} characters remaining this cycle.`
+                  ? `${(quotaInfo?.remaining_chars || 30000).toLocaleString()} characters remaining this cycle.`
                   : 'Unlimited generation active.'}
                 {'\n'}💡 <Text style={{ color: Colors.text }}>On-Device Offline synthesis is always 100% free and unlimited!</Text>
               </Text>

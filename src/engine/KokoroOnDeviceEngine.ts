@@ -37,7 +37,7 @@ export interface GenerationResult {
 const SETTINGS_KEY = 'KOKORO_SETTINGS';
 const HISTORY_KEY = 'KOKORO_GENERATION_HISTORY';
 
-export const CLOUD_STUDIO_URL = 'https://partly-congress-chest-periods.trycloudflare.com';
+export const CLOUD_STUDIO_URL = 'https://saytts.site';
 
 export interface AppSettings {
   engineMode: 'cloud_studio' | 'offline_on_device';
@@ -49,6 +49,7 @@ export interface AppSettings {
 // List of candidate cloud & fallback tunnel addresses
 export const DEFAULT_CANDIDATE_URLS = [
   CLOUD_STUDIO_URL,
+  'https://saytts.site',
   'http://161.118.193.63:8000',
   'http://localhost:8000',
 ];
@@ -96,8 +97,8 @@ export class KokoroOnDeviceEngine {
       const stored = await AsyncStorage.getItem(SETTINGS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Auto-migrate stale ngrok / localtunnel / old urls to active cloud VPS
-        if (!parsed.lanServerUrl || parsed.lanServerUrl.includes('ngrok') || parsed.lanServerUrl.includes('loca.lt') || parsed.lanServerUrl.includes('161.118.193.63')) {
+        // Auto-migrate stale ngrok / localtunnel / trycloudflare / old urls to active cloud VPS
+        if (!parsed.lanServerUrl || parsed.lanServerUrl.includes('trycloudflare') || parsed.lanServerUrl.includes('ngrok') || parsed.lanServerUrl.includes('loca.lt') || parsed.lanServerUrl.includes('161.118.193.63')) {
           parsed.lanServerUrl = CLOUD_STUDIO_URL;
           await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
         }
@@ -303,7 +304,7 @@ export class KokoroOnDeviceEngine {
       if (response.status === 402) {
         const errData = await response.json().catch(() => ({}));
         const detail = errData.detail || {};
-        const msg = typeof detail === 'string' ? detail : (detail.message || 'Monthly free Cloud GPU quota reached (20,000 characters). Switch to On-Device Offline Engine or Upgrade to Pro.');
+        const msg = typeof detail === 'string' ? detail : (detail.message || 'Monthly free Cloud GPU quota reached (30,000 characters). Switch to On-Device Offline Engine or Upgrade to Pro.');
         throw new Error(msg);
       }
       throw new Error(`Studio server returned HTTP ${response.status}`);

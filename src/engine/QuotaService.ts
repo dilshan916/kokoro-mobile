@@ -61,10 +61,10 @@ export class QuotaService {
       tier: 'free',
       is_pro: false,
       monthly_usage: 0,
-      monthly_limit: 20000,
-      remaining_chars: 20000,
+      monthly_limit: 30000,
+      remaining_chars: 30000,
       percent_used: 0.0,
-      billing_cycle: '2026-08',
+      billing_cycle: '2026-09',
     };
   }
 
@@ -74,7 +74,7 @@ export class QuotaService {
   public static async redeemLicense(code: string): Promise<{ success: boolean; message: string; quota?: QuotaInfo }> {
     const engine = KokoroOnDeviceEngine.getInstance();
     const activeUrl = await engine.probeActiveServer();
-    const serverUrl = activeUrl || 'https://dry-eldercare-bok.ngrok-free.dev';
+    const serverUrl = activeUrl || 'https://saytts.site';
     const deviceId = await DeviceManager.getDeviceId();
     const fingerprint = await DeviceManager.getFingerprint();
 
@@ -116,7 +116,7 @@ export class QuotaService {
   public static async createCheckoutSession(): Promise<string | null> {
     const engine = KokoroOnDeviceEngine.getInstance();
     const activeUrl = await engine.probeActiveServer();
-    const serverUrl = activeUrl || 'https://dry-eldercare-bok.ngrok-free.dev';
+    const serverUrl = activeUrl || 'https://saytts.site';
     const deviceId = await DeviceManager.getDeviceId();
     const fingerprint = await DeviceManager.getFingerprint();
 
