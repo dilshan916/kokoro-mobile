@@ -22,13 +22,15 @@ export class QuotaService {
     const fingerprint = await DeviceManager.getFingerprint();
     const cached = await DeviceManager.getQuotaCache();
 
-    const serverUrl = 'https://partly-congress-chest-periods.trycloudflare.com';
+    const engine = KokoroOnDeviceEngine.getInstance();
+    const activeUrl = await engine.probeActiveServer();
+    const serverUrl = activeUrl || 'https://saytts.site';
 
     try {
       const url = `${serverUrl.replace(/\/$/, '')}/v1/user/quota?device_id=${encodeURIComponent(deviceId)}`;
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
       const res = await fetch(url, {
         method: 'GET',
@@ -48,15 +50,17 @@ export class QuotaService {
         return data;
       }
     } catch (e) {
-      // If network is slow or offline, use cached quota
+      // If network is slow or offline, fallback
     }
 
-    if (cached) {
+    // If cache exists and is free tier, use it
+    if (cached && !cached.is_pro && cached.tier === 'free') {
       return cached;
     }
 
     // Default fallback (Offline / Disconnected)
-    return {
+    const currentCycle = new Date().toISOString().substring(0, 7);
+    const defaultFreeQuota: QuotaInfo = {
       device_id: deviceId,
       tier: 'free',
       is_pro: false,
@@ -64,8 +68,10 @@ export class QuotaService {
       monthly_limit: 30000,
       remaining_chars: 30000,
       percent_used: 0.0,
-      billing_cycle: '2026-09',
+      billing_cycle: currentCycle,
     };
+    await DeviceManager.saveQuotaCache(defaultFreeQuota);
+    return defaultFreeQuota;
   }
 
   /**

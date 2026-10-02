@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 const DEVICE_ID_KEY = 'KOKORO_ANONYMOUS_DEVICE_ID';
 const FINGERPRINT_KEY = 'KOKORO_DEVICE_FINGERPRINT';
 const QUOTA_CACHE_KEY = 'KOKORO_QUOTA_CACHE';
+const QUOTA_RESET_FLAG_KEY = 'KOKORO_QUOTA_RESET_FLAG_V2';
 
 export class DeviceManager {
   private static cachedDeviceId: string | null = null;
@@ -96,10 +97,28 @@ export class DeviceManager {
   }
 
   /**
-   * Retrieve cached quota state from device storage
+   * Clear quota cache from device storage
+   */
+  public static async clearQuotaCache(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(QUOTA_CACHE_KEY);
+    } catch (e) {}
+  }
+
+  /**
+   * Retrieve cached quota state from device storage.
+   * Automatically clears legacy cached Pro/VIP status if reset migration is pending.
    */
   public static async getQuotaCache(): Promise<any | null> {
     try {
+      const hasReset = await AsyncStorage.getItem(QUOTA_RESET_FLAG_KEY);
+      if (!hasReset) {
+        // Enforce global reset of any stored Pro/VIP cache
+        await AsyncStorage.removeItem(QUOTA_CACHE_KEY);
+        await AsyncStorage.setItem(QUOTA_RESET_FLAG_KEY, 'done');
+        return null;
+      }
+
       const raw = await AsyncStorage.getItem(QUOTA_CACHE_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
