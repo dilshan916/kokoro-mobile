@@ -148,4 +148,68 @@ export class QuotaService {
 
     return data.checkout_url || null;
   }
+
+  /**
+   * Claim bonus characters awarded from watching a rewarded ad video
+   */
+  public static async claimRewardBonus(bonusChars: number = 1000): Promise<QuotaInfo> {
+    const deviceId = await DeviceManager.getDeviceId();
+    const fingerprint = await DeviceManager.getFingerprint();
+    const cached = await DeviceManager.getQuotaCache();
+
+    const currentLimit = ((cached?.monthly_limit) || 30000) + bonusChars;
+    const currentRemaining = typeof cached?.remaining_chars === 'number'
+      ? cached.remaining_chars + bonusChars
+      : 30000 + bonusChars;
+
+    const currentUsage = cached?.monthly_usage || 0;
+    const percentUsed = currentLimit > 0 ? Math.min(100, Math.round((currentUsage / currentLimit) * 1000) / 10) : 0;
+
+    const updatedQuota: QuotaInfo = {
+      device_id: deviceId,
+      tier: cached?.tier || 'free',
+      is_pro: cached?.is_pro || false,
+      monthly_usage: currentUsage,
+      monthly_limit: currentLimit,
+      remaining_chars: currentRemaining,
+      percent_used: percentUsed,
+      billing_cycle: cached?.billing_cycle || new Date().toISOString().substring(0, 7),
+    };
+    await DeviceManager.saveQuotaCache(updatedQuota);
+
+    // Sync bonus with backend server
+    try {
+      const engine = KokoroOnDeviceEngine.getInstance();
+      const activeUrl = await engine.probeActiveServer();
+      const serverUrl = activeUrl || 'https://saytts.site';
+      const url = `${serverUrl.replace(/\/$/, '')}/v1/user/reward-bonus`;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': deviceId,
+          'X-Device-Fingerprint': fingerprint,
+          'Bypass-Tunnel-Reminder': 'true',
+          'ngrok-skip-browser-warning': 'true',
+        },
+        body: JSON.stringify({
+          device_id: deviceId,
+          bonus_chars: bonusChars,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.quota) {
+          await DeviceManager.saveQuotaCache(data.quota);
+          return data.quota;
+        }
+      }
+    } catch (e) {
+      // Local bonus persists seamlessly even offline
+    }
+
+    return updatedQuota;
+  }
 }

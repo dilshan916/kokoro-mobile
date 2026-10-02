@@ -41,6 +41,7 @@ import { ToastNotification } from '../../src/components/ToastNotification';
 import { DeviceManager } from '../../src/engine/DeviceManager';
 import { QuotaService, QuotaInfo } from '../../src/engine/QuotaService';
 import { AdMobBanner } from '../../src/components/AdMobBanner';
+import { AdService } from '../../src/engine/AdService';
 
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -247,6 +248,34 @@ export default function SettingsScreen() {
     }
   };
 
+  const [isWatchingReward, setIsWatchingReward] = useState(false);
+
+  const handleWatchRewardedAd = async () => {
+    try {
+      setIsWatchingReward(true);
+      const result = await AdService.showRewardedAd();
+      setIsWatchingReward(false);
+
+      if (result.earned) {
+        const bonusAmount = result.amount || 1000;
+        const updated = await QuotaService.claimRewardBonus(bonusAmount);
+        setQuotaInfo(updated);
+        Alert.alert(
+          '🎉 Bonus Credits Unlocked!',
+          `You earned +${bonusAmount.toLocaleString()} extra Cloud characters! Your new monthly quota is ${updated.monthly_limit?.toLocaleString()} characters.`
+        );
+      } else {
+        Alert.alert(
+          'Video Loading',
+          'The bonus reward video is currently preparing in the background. Please tap again in a few moments!'
+        );
+      }
+    } catch (err: any) {
+      setIsWatchingReward(false);
+      Alert.alert('Error', err.message || 'Could not show rewarded ad.');
+    }
+  };
+
   const insets = useSafeAreaInsets();
 
   return (
@@ -304,6 +333,23 @@ export default function SettingsScreen() {
                   : 'Unlimited generation active.'}
                 {'\n'}💡 <Text style={{ color: Colors.text }}>On-Device Offline synthesis is always 100% free and unlimited!</Text>
               </Text>
+
+              {/* Rewarded Video Bonus Button */}
+              <TouchableOpacity
+                style={styles.rewardBonusBtn}
+                onPress={handleWatchRewardedAd}
+                disabled={isWatchingReward}
+                activeOpacity={0.8}
+              >
+                {isWatchingReward ? (
+                  <ActivityIndicator size="small" color="#070a12" />
+                ) : (
+                  <>
+                    <Gift size={15} color="#070a12" />
+                    <Text style={styles.rewardBonusBtnText}>Watch Video for +1,000 Bonus Chars</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
               <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgradeCheckout}>
                 <Sparkles size={14} color="#070a12" />
@@ -962,6 +1008,21 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 11,
     lineHeight: 16,
+  },
+  rewardBonusBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: '#03DAC6',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  rewardBonusBtnText: {
+    color: '#070a12',
+    fontSize: 13,
+    fontWeight: '800',
   },
   upgradeBtn: {
     flexDirection: 'row',

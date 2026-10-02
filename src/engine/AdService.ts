@@ -2,22 +2,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceManager } from './DeviceManager';
 
 export const ADMOB_APP_ID = 'ca-app-pub-4911081363726956~5891952434';
-export const ADMOB_INTERSTITIAL_UNIT_ID = 'ca-app-pub-4911081363726956/6942230090';
-export const ADMOB_BANNER_UNIT_ID = 'ca-app-pub-4911081363726956/3609404028';
+export const ADMOB_INTERSTITIAL_UNIT_ID = 'ca-app-pub-4911081363726956/6942230090'; // Audio_Generated_Interstitial
+export const ADMOB_BANNER_UNIT_ID = 'ca-app-pub-4911081363726956/3609404028'; // Main_Banner
+export const ADMOB_REWARDED_UNIT_ID = 'ca-app-pub-4911081363726956/7201164677'; // Bonus_Credits_Reward
 
 const GENERATION_COUNT_KEY = 'KOKORO_AD_GEN_COUNT';
 const LAST_INTERSTITIAL_TIME_KEY = 'KOKORO_LAST_INTERSTITIAL_TIME';
 
 let mobileAds: any = null;
 let InterstitialAd: any = null;
+let RewardedInterstitialAd: any = null;
 let AdEventType: any = null;
+let RewardedAdEventType: any = null;
 let TestIds: any = null;
 
 try {
   const gma = require('react-native-google-mobile-ads');
   mobileAds = gma.default;
   InterstitialAd = gma.InterstitialAd;
+  RewardedInterstitialAd = gma.RewardedInterstitialAd;
   AdEventType = gma.AdEventType;
+  RewardedAdEventType = gma.RewardedAdEventType;
   TestIds = gma.TestIds;
 } catch (e) {
   console.warn('[AdMob] Native module not loaded yet:', e);
@@ -25,12 +30,19 @@ try {
 
 export class AdService {
   private static isInitialized = false;
+
+  // Interstitial Ad state
   private static interstitial: any = null;
   private static isAdLoaded = false;
   private static isLoading = false;
 
+  // Rewarded Interstitial Ad state (Bonus Credits)
+  private static rewardedAd: any = null;
+  private static isRewardedLoaded = false;
+  private static isLoadingRewarded = false;
+
   /**
-   * Initialize Google Mobile Ads SDK and start preloading
+   * Initialize Google Mobile Ads SDK and start preloading ads
    */
   public static async init(): Promise<void> {
     if (this.isInitialized || !mobileAds) return;
@@ -38,6 +50,7 @@ export class AdService {
       await mobileAds().initialize();
       this.isInitialized = true;
       this.preloadInterstitial();
+      this.preloadRewardedAd();
     } catch (e) {
       console.warn('[AdMob] Init error:', e);
     }
@@ -83,6 +96,103 @@ export class AdService {
   }
 
   /**
+   * Preload Google AdMob Rewarded Interstitial for Bonus Credits
+   */
+  public static preloadRewardedAd(): void {
+    if (!RewardedInterstitialAd || this.isRewardedLoaded || this.isLoadingRewarded) return;
+
+    try {
+      this.isLoadingRewarded = true;
+      const adUnitId = __DEV__ && TestIds ? TestIds.REWARDED_INTERSTITIAL : ADMOB_REWARDED_UNIT_ID;
+
+      this.rewardedAd = RewardedInterstitialAd.createForAdRequest(adUnitId, {
+        requestNonPersonalizedAdsOnly: false,
+      });
+
+      this.rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+        this.isRewardedLoaded = true;
+        this.isLoadingRewarded = false;
+      });
+
+      this.rewardedAd.addAdEventListener(AdEventType.ERROR, (error: any) => {
+        this.isRewardedLoaded = false;
+        this.isLoadingRewarded = false;
+        console.warn('[AdMob] Rewarded ad load error:', error);
+      });
+
+      this.rewardedAd.addAdEventListener(AdEventType.CLOSED, () => {
+        this.isRewardedLoaded = false;
+        this.isLoadingRewarded = false;
+        setTimeout(() => this.preloadRewardedAd(), 2000);
+      });
+
+      this.rewardedAd.load();
+    } catch (e) {
+      this.isLoadingRewarded = false;
+      console.warn('[AdMob] Rewarded preload failed:', e);
+    }
+  }
+
+  /**
+   * Check if rewarded ad is ready to display
+   */
+  public static isRewardedAdReady(): boolean {
+    return this.isRewardedLoaded && !!this.rewardedAd;
+  }
+
+  /**
+   * Show rewarded ad to grant bonus tokens/characters.
+   * Resolves with { earned: true, amount: number } upon completion.
+   */
+  public static showRewardedAd(): Promise<{ earned: boolean; amount: number }> {
+    return new Promise((resolve) => {
+      if (!this.isRewardedLoaded || !this.rewardedAd) {
+        this.preloadRewardedAd();
+        resolve({ earned: false, amount: 0 });
+        return;
+      }
+
+      let userEarned = false;
+      let earnedAmount = 1000;
+
+      const rewardListener = this.rewardedAd.addAdEventListener(
+        RewardedAdEventType.EARNED_REWARD,
+        (reward: any) => {
+          userEarned = true;
+          if (reward && typeof reward.amount === 'number' && reward.amount > 0) {
+            earnedAmount = reward.amount;
+          }
+        }
+      );
+
+      const closeListener = this.rewardedAd.addAdEventListener(
+        AdEventType.CLOSED,
+        () => {
+          try {
+            rewardListener?.();
+            closeListener?.();
+          } catch (_) {}
+          this.isRewardedLoaded = false;
+          this.preloadRewardedAd();
+          resolve({ earned: userEarned, amount: userEarned ? earnedAmount : 0 });
+        }
+      );
+
+      try {
+        this.rewardedAd.show();
+      } catch (err) {
+        try {
+          rewardListener?.();
+          closeListener?.();
+        } catch (_) {}
+        this.isRewardedLoaded = false;
+        this.preloadRewardedAd();
+        resolve({ earned: false, amount: 0 });
+      }
+    });
+  }
+
+  /**
    * Check if user is eligible for ads (Free tier only; disabled for Pro/VIP)
    */
   public static async isAdEnabled(): Promise<boolean> {
@@ -114,7 +224,6 @@ export class AdService {
         return false;
       }
     } else {
-      // Trigger preload if not loaded yet
       this.preloadInterstitial();
       return false;
     }
