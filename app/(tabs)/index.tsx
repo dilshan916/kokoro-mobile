@@ -34,6 +34,9 @@ import {
   AppSettings,
 } from '../../src/engine/KokoroOnDeviceEngine';
 import { resolveAutoVoice } from '../../src/engine/LanguageDetector';
+import { AdService } from '../../src/engine/AdService';
+import { AdsterraBanner } from '../../src/components/AdsterraBanner';
+import { AdsterraInterstitialModal } from '../../src/components/AdsterraInterstitialModal';
 
 const SPEED_OPTIONS = [0.8, 1.0, 1.25, 1.5];
 
@@ -43,6 +46,7 @@ export default function StudioScreen() {
   const [secondaryVoice, setSecondaryVoice] = useState<VoiceItem>(VOICES_CATALOG[1]);
   const [isBlenderActive, setIsBlenderActive] = useState(false);
   const [blendRatio, setBlendRatio] = useState(0.5);
+  const [showInterstitial, setShowInterstitial] = useState(false);
 
   const [speedIndex, setSpeedIndex] = useState(1); // default 1.0x
   const [presetIndex, setPresetIndex] = useState(0); // default Studio Reference
@@ -114,6 +118,13 @@ export default function StudioScreen() {
       setCurrentResult(result);
       setIsGenerating(false);
       checkConnection();
+
+      // Trigger sponsored interstitial if eligible (Free tier)
+      AdService.onGenerationCompleted().then((shouldShow) => {
+        if (shouldShow) {
+          setShowInterstitial(true);
+        }
+      });
     } catch (error: any) {
       setIsGenerating(false);
       Alert.alert('Synthesis Error', error.message || 'Failed to synthesize audio');
@@ -332,6 +343,9 @@ export default function StudioScreen() {
             />
           </View>
         )}
+
+        {/* Sponsored Partner Banner */}
+        <AdsterraBanner style={{ marginTop: 8 }} />
       </ScrollView>
 
       {/* 54-Voice Selector Modal */}
@@ -341,6 +355,12 @@ export default function StudioScreen() {
         selectedVoiceId={pickingTarget === 'primary' ? selectedVoice.id : secondaryVoice.id}
         onSelectVoice={handleVoiceSelected}
         title={pickingTarget === 'primary' ? 'Select Primary Voice' : 'Select Secondary Voice'}
+      />
+
+      {/* Sponsored Partner Interstitial Modal */}
+      <AdsterraInterstitialModal
+        visible={showInterstitial}
+        onClose={() => setShowInterstitial(false)}
       />
     </View>
   );

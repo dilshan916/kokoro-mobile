@@ -40,6 +40,7 @@ import { MODEL_VARIANTS, ModelDownloader, ModelVariant } from '../../src/engine/
 import { ToastNotification } from '../../src/components/ToastNotification';
 import { DeviceManager } from '../../src/engine/DeviceManager';
 import { QuotaService, QuotaInfo } from '../../src/engine/QuotaService';
+import { AdsterraBanner } from '../../src/components/AdsterraBanner';
 
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -311,6 +312,9 @@ export default function SettingsScreen() {
             </View>
           )}
         </View>
+
+        {/* Sponsored Partner Banner */}
+        <AdsterraBanner style={{ marginBottom: 12 }} />
 
         {/* Neural Model Variants Downloader Card */}
         <View style={styles.card}>
