@@ -35,6 +35,7 @@ import {
 } from '../../src/engine/KokoroOnDeviceEngine';
 import { resolveAutoVoice } from '../../src/engine/LanguageDetector';
 import { AdService } from '../../src/engine/AdService';
+import { AdMobBanner } from '../../src/components/AdMobBanner';
 
 const SPEED_OPTIONS = [0.8, 1.0, 1.25, 1.5];
 
@@ -337,6 +338,9 @@ export default function StudioScreen() {
             />
           </View>
         )}
+
+        {/* Google AdMob Banner */}
+        <AdMobBanner style={{ marginTop: 8 }} />
       </ScrollView>
 
       {/* 54-Voice Selector Modal */}
