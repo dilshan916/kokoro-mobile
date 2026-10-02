@@ -71,7 +71,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-updates"
+      "expo-updates",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4911081363726956~5891952434",
+          "iosAppId": "ca-app-pub-4911081363726956~5891952434"
+        }
+      ]
     ],
     "extra": {
       "router": {},
